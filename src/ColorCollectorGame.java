@@ -27,6 +27,7 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
     int velocityX;
     int velocityY;
     boolean gameOver = false;
+    int score = 0;
 
     ArrayList<Tile> placedTiles = new ArrayList<>();
 
@@ -80,6 +81,11 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
         g.setColor(Color.BLUE);
         g.fillRect(food.x * tileSize, food.y * tileSize, tileSize, tileSize);
 
+        // Draw score
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.PLAIN, 20));
+        g.drawString("Score: " + score, 10, 20);
+
         if (gameOver) {
             g.setColor(Color.WHITE);
             g.setFont(new Font("Arial", Font.BOLD, 40));
@@ -101,6 +107,7 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
     public void move() {
         if (collision(head, food)) {
             placedTiles.add(new Tile(food.x, food.y));
+            score++;
             placeFood(random);
         }
 
