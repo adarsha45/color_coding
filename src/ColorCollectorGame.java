@@ -2,17 +2,22 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Random;
-
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.AudioInputStream;
 import javax.swing.*;
+import java.io.File;
 
 public class ColorCollectorGame extends JPanel implements ActionListener, KeyListener {
     private class Tile {
         int x;
         int y;
+        Color color;
 
-        Tile(int x, int y) {
+        Tile(int x, int y, Color color) {
             this.x = x;
             this.y = y;
+            this.color = color;
         }
     }
 
@@ -28,6 +33,7 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
     int velocityY;
     boolean gameOver = false;
     int score = 0;
+    int tileCounter = 0;
 
     ArrayList<Tile> placedTiles = new ArrayList<>();
 
@@ -39,8 +45,8 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
         addKeyListener(this);
         setFocusable(true);
 
-        head = new Tile(5, 5);
-        food = new Tile(10, 10);
+        head = new Tile(5, 5, Color.WHITE);
+        food = new Tile(10, 10, Color.BLUE);
         random = new Random();
         placeFood(random);
 
@@ -63,22 +69,17 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
         }
 
         // Draw collected tiles
-        for (int i = 0; i < placedTiles.size(); i++) {
-            Tile t = placedTiles.get(i);
-            if ((i + 1) % 4 == 0) {
-                g.setColor(Color.RED);
-            } else {
-                g.setColor(Color.YELLOW);
-            }
+        for (Tile t : placedTiles) {
+            g.setColor(t.color);
             g.fillRect(t.x * tileSize, t.y * tileSize, tileSize, tileSize);
         }
 
         // Draw head
-        g.setColor(Color.WHITE);
+        g.setColor(head.color);
         g.fillRect(head.x * tileSize, head.y * tileSize, tileSize, tileSize);
 
         // Draw food
-        g.setColor(Color.BLUE);
+        g.setColor(food.color);
         g.fillRect(food.x * tileSize, food.y * tileSize, tileSize, tileSize);
 
         // Draw score
@@ -106,13 +107,32 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
 
     public void move() {
         if (collision(head, food)) {
-            placedTiles.add(new Tile(food.x, food.y));
-            score++;
+            Color newTileColor;
+            boolean specialTile = false;
+
+            if ((tileCounter + 1) % 4 == 0) {
+                newTileColor = random.nextBoolean() ? Color.RED : Color.GREEN;
+                specialTile = true;
+            } else {
+                newTileColor = Color.YELLOW;
+                score += 5;
+            }
+
+            Tile newTile = new Tile(food.x, food.y, newTileColor);
+            placedTiles.add(newTile);
+            tileCounter++;
             placeFood(random);
+
+            if (specialTile && newTileColor == Color.GREEN && collision(head, newTile)) {
+                score += 10;
+                playSound("ding.wav");
+            }
         }
 
         head.x += velocityX;
         head.y += velocityY;
+
+        //setting up the boundry
 
         if (head.y >= boardHeight / tileSize) {
             head.y = 0;
@@ -124,12 +144,29 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
             head.x = boardWidth / tileSize - 1;
         }
 
-        for (int i = 3; i < placedTiles.size(); i += 4) {
-            if (collision(head, placedTiles.get(i))) {
-                gameOver = true;
-                gameLoop.stop();
-                break;
+        for (Tile t : placedTiles) {
+            if (collision(head, t)) {
+                if (t.color == Color.RED) {
+                    gameOver = true;
+                    gameLoop.stop();
+                    break;
+                } else if (t.color == Color.GREEN) {
+                    score += 10;
+                    playSound("ding.wav");
+                    t.color = Color.YELLOW; // Avoid scoring multiple times
+                }
             }
+        }
+    }
+
+    public void playSound(String soundFile) {
+        try {
+            AudioInputStream audioIn = AudioSystem.getAudioInputStream(new File(soundFile));
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioIn);
+            clip.start();
+        } catch (Exception e) {
+            System.out.println("Error playing sound: " + e.getMessage());
         }
     }
 

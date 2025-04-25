@@ -12,9 +12,10 @@ public class App {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
        //12:22 
-       ColorCollectorGame snakeGame = new ColorCollectorGame(width, height); 
+       ColorCollectorGame snakeGame = new ColorCollectorGame(width, height);
         frame.add(snakeGame);    
         frame.pack();
-        snakeGame.requestFocus(true); // Make the game panel focusable
+        snakeGame.requestFocus(true); // Make the game panel 
+        
     }
 }
