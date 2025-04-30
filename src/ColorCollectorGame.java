@@ -7,6 +7,9 @@ import javax.sound.sampled.Clip;
 import javax.sound.sampled.AudioInputStream;
 import javax.swing.*;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
 
 public class ColorCollectorGame extends JPanel implements ActionListener, KeyListener {
     private class Tile {
@@ -24,6 +27,9 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
     int tileSize = 25;
     int boardWidth;
     int boardHeight;
+    int scorePerTile;
+    int specialTileFrequency;
+    int gameSpeed;
 
     Tile head;
     Tile food;
@@ -40,21 +46,40 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
     ColorCollectorGame(int boardWidth, int boardHeight) {
         this.boardWidth = boardWidth;
         this.boardHeight = boardHeight;
+        loadEnv();
         setPreferredSize(new Dimension(boardWidth, boardHeight));
         setBackground(Color.BLACK);
         addKeyListener(this);
         setFocusable(true);
-
+    
         head = new Tile(5, 5, Color.WHITE);
         food = new Tile(10, 10, Color.BLUE);
         random = new Random();
         placeFood(random);
-
+    
         velocityX = 0;
         velocityY = 0;
-
-        gameLoop = new Timer(60, this);
+    
+        gameLoop = new Timer(gameSpeed, this); // gameSpeed is now correctly set
         gameLoop.start();
+    }
+    
+
+    private void loadEnv() {
+        try {
+            Properties props = new Properties();
+            FileInputStream fis = new FileInputStream("config.env");
+            props.load(fis);
+            fis.close();
+            scorePerTile = Integer.parseInt(props.getProperty("SCORE_PER_TILE", "5"));
+            specialTileFrequency = Integer.parseInt(props.getProperty("SPECIAL_TILE_FREQUENCY", "4"));
+            gameSpeed = Integer.parseInt(props.getProperty("GAME_SPEED_MS", "500"));
+        } catch (IOException e) {
+            System.out.println("Error loading environment variables, using defaults.");
+            scorePerTile = 5;
+            specialTileFrequency = 4;
+            gameSpeed = 60;
+        }
     }
 
     public void paintComponent(Graphics g) {
@@ -68,21 +93,17 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
             g.drawLine(0, i * tileSize, boardWidth, i * tileSize);
         }
 
-        // Draw collected tiles
         for (Tile t : placedTiles) {
             g.setColor(t.color);
             g.fillRect(t.x * tileSize, t.y * tileSize, tileSize, tileSize);
         }
 
-        // Draw head
         g.setColor(head.color);
         g.fillRect(head.x * tileSize, head.y * tileSize, tileSize, tileSize);
 
-        // Draw food
         g.setColor(food.color);
         g.fillRect(food.x * tileSize, food.y * tileSize, tileSize, tileSize);
 
-        // Draw score
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.PLAIN, 20));
         g.drawString("Score: " + score, 10, 20);
@@ -108,31 +129,20 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
     public void move() {
         if (collision(head, food)) {
             Color newTileColor;
-            boolean specialTile = false;
-
-            if ((tileCounter + 1) % 4 == 0) {
+            if ((tileCounter + 1) % specialTileFrequency == 0) {
                 newTileColor = random.nextBoolean() ? Color.RED : Color.GREEN;
-                specialTile = true;
             } else {
                 newTileColor = Color.YELLOW;
-                score += 5;
+                score += scorePerTile;
             }
 
-            Tile newTile = new Tile(food.x, food.y, newTileColor);
-            placedTiles.add(newTile);
+            placedTiles.add(new Tile(food.x, food.y, newTileColor));
             tileCounter++;
             placeFood(random);
-
-            if (specialTile && newTileColor == Color.GREEN && collision(head, newTile)) {
-                score += 10;
-                playSound("ding.wav");
-            }
         }
 
         head.x += velocityX;
         head.y += velocityY;
-
-        //setting up the boundry
 
         if (head.y >= boardHeight / tileSize) {
             head.y = 0;
@@ -153,7 +163,7 @@ public class ColorCollectorGame extends JPanel implements ActionListener, KeyLis
                 } else if (t.color == Color.GREEN) {
                     score += 10;
                     playSound("ding.wav");
-                    t.color = Color.YELLOW; // Avoid scoring multiple times
+                    t.color = Color.YELLOW;
                 }
             }
         }
